@@ -314,8 +314,8 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp, VENC_CHN VencChn,
 		stH264Attr.u32PicWidth = stPicSize.u32Width;/*the picture width*/
 		stH264Attr.u32PicHeight = stPicSize.u32Height;/*the picture height*/
 		stH264Attr.u32BufSize = stPicSize.u32Width * stPicSize.u32Height * 2;/*stream buffer size*/
-		stH264Attr.u32Profile = 0;/*0: baseline; 1:MP; 2:HP   ? */
-		//stH264Attr.u32Profile = 1;
+		//stH264Attr.u32Profile = 0;/*0: baseline; 1:MP; 2:HP   ? */
+		stH264Attr.u32Profile = 1;
 		stH264Attr.bByFrame = HI_TRUE;/*get stre，我总结了一套设置码率的公式，分享给大家如下：
 		 am mode is slice mode or frame mode?*/
 		stH264Attr.bField = HI_FALSE; /* surpport frame code only for hi3516, bfield = HI_FALSE */
@@ -328,7 +328,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp, VENC_CHN VencChn,
 		if (SAMPLE_RC_CBR == enRcMode) {
 			stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_H264CBR;
 			stH264Cbr.u32Gop = (VIDEO_ENCODING_MODE_PAL == enNorm) ? 25 : 30; //I帧之间的间隔。是25
-			stH264Cbr.u32StatTime = 1; /* stream rate statics time(s) */
+			stH264Cbr.u32StatTime = 1; /* stream rate statics time(s) */ //码率统计时间
 			stH264Cbr.u32ViFrmRate =
 					(VIDEO_ENCODING_MODE_PAL == enNorm) ? 25 : 20;/* input (vi) frame rate */
 			stH264Cbr.fr32TargetFrmRate =

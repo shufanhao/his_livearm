@@ -97,11 +97,11 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	 step  1: init sys variable 主要是初始化视频缓存池
 	 ******************************************/
 	memset(&stVbConf, 0, sizeof(VB_CONF_S)); //memset()把你快连续的内存初始化为你给的值,这里是初始化为0
-	stVbConf.u32MaxPoolCnt = 128;
+	stVbConf.u32MaxPoolCnt = 128;//系统中所容纳缓存池的个数
 	/*video buffer*/
 	//根据enSize 来确定缓存块的大小 因为是输出了三段码流 则初始化了三个缓存池
 	//u32BlkSize是缓存池中每个缓存块的大小
-	/*u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm, enSize[0],
+	u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm, enSize[0],
 	SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
 	stVbConf.astCommPool[0].u32BlkSize = u32BlkSize; //每个缓存块大小768*576*2
 	stVbConf.astCommPool[0].u32BlkCnt = 5;//5;//10; //缓存块的个数。可不可以小点呢？？
@@ -117,11 +117,12 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	stVbConf.astCommPool[2].u32BlkSize = 0;
 	stVbConf.astCommPool[2].u32BlkCnt = 0;//6;
 	//stVbConf.astCommPool[2].u32BlkCnt = 1;
-	 hist buf
+
 	stVbConf.astCommPool[3].u32BlkSize = (196 * 4);
 	stVbConf.astCommPool[3].u32BlkCnt = 0;//6;
-	//stVbConf.astCommPool[3].u32BlkCnt = 1;*/
-	u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm,\
+	//stVbConf.astCommPool[3].u32BlkCnt = 1;
+	//以下部分是原始的
+	/*u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm,\
 	                enSize[0], SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
 	    stVbConf.astCommPool[0].u32BlkSize = u32BlkSize;
 	    stVbConf.astCommPool[0].u32BlkCnt = 10;
@@ -136,9 +137,8 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	    stVbConf.astCommPool[2].u32BlkSize = u32BlkSize;
 	    stVbConf.astCommPool[2].u32BlkCnt = 6;
 
-	    /* hist buf*/
 	    stVbConf.astCommPool[3].u32BlkSize = (196*4);
-	    stVbConf.astCommPool[3].u32BlkCnt = 6;
+	    stVbConf.astCommPool[3].u32BlkCnt = 6;*/
 	/******************************************
 	 step 2: mpp system init.
 	 ******************************************/
@@ -173,6 +173,7 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 		SAMPLE_COMM_VI_StopVi(&stViConfig);
 	}
 	VpssGrp = 0;
+	//group 0 属性结构体设置
 	stVpssGrpAttr.u32MaxW = stSize.u32Width;
 	stVpssGrpAttr.u32MaxH = stSize.u32Height;
 	stVpssGrpAttr.bDrEn = HI_FALSE;
@@ -182,14 +183,14 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	stVpssGrpAttr.bHistEn = HI_TRUE;
 	stVpssGrpAttr.enDieMode = VPSS_DIE_MODE_AUTO;
 	stVpssGrpAttr.enPixFmt = SAMPLE_PIXEL_FORMAT;
-	//启动VPSS（）
+	//启动VPSS Group（）
 	s32Ret = SAMPLE_COMM_VPSS_StartGroup(VpssGrp, &stVpssGrpAttr);
 	if (HI_SUCCESS != s32Ret) {
 		SAMPLE_PRT("Start Vpss failed!\n");
 		//goto END_VENC_720P_CLASSIC_2;
 		SAMPLE_COMM_VPSS_StopGroup(VpssGrp);
 	}
-	//绑定
+	//绑定 vi 和vpss绑定
 	s32Ret = SAMPLE_COMM_VI_BindVpss(stViConfig.enViMode);
 	if (HI_SUCCESS != s32Ret) {
 		SAMPLE_PRT("Vi bind Vpss failed!\n");
@@ -200,8 +201,8 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	//方式
 	VpssChn = 0;
 	memset(&stVpssChnAttr, 0, sizeof(stVpssChnAttr));
-	stVpssChnAttr.bFrameEn = HI_FALSE;
-	stVpssChnAttr.bSpEn = HI_TRUE;
+	stVpssChnAttr.bFrameEn = HI_FALSE;//边框使能开关
+	stVpssChnAttr.bSpEn = HI_TRUE;//边框属性
 	s32Ret = SAMPLE_COMM_VPSS_EnableChn(VpssGrp, VpssChn, &stVpssChnAttr,
 	HI_NULL, HI_NULL);
 	if (HI_SUCCESS != s32Ret) {
@@ -217,7 +218,7 @@ HI_S32 SAMPLE_VENC_720P_CLASSIC(HI_VOID) {
 	}
 
 	VpssChn = 1;
-	stVpssChnMode.enChnMode = VPSS_CHN_MODE_USER;
+	stVpssChnMode.enChnMode = VPSS_CHN_MODE_USER;//user模式,此模式下物理通道可与多个接受者进行绑定
 	stVpssChnMode.bDouble = HI_FALSE;
 	stVpssChnMode.enPixelFormat = SAMPLE_PIXEL_FORMAT;
 	stVpssChnMode.u32Width = 640;

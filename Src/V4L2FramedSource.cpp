@@ -42,7 +42,8 @@ void V4L2FramedSource::doGetNextFrame() {
 	VENC_CHN_ATTR_S stVencChnAttr; //获得编码通道属性
 	HI_S32 maxfd = 0;
 	struct timeval TimeoutVal;
-	fd_set read_fds;
+	fd_set read_fds; //fd_set是一种数据结构,实际上是一long类型的数组,每一个数组元素都能与一打开的
+	                 //文件句柄建立联系.
 	HI_S32 VencFd[VENC_MAX_CHN_NUM];
 	VENC_CHN_STAT_S stStat;	   //定义编码通道的状态结构体
 	VENC_STREAM_S stStream;	   //码流结构体
@@ -50,7 +51,7 @@ void V4L2FramedSource::doGetNextFrame() {
 	PAYLOAD_TYPE_E enPayLoadType[VENC_MAX_CHN_NUM];
 	/**step 1:  check & prepare save-file & venc-fd
 	******************************************/
-	int i = 1 ; // only set 0(720p) , 1(vga), 2(qvga)
+	int i = 1 ; // only set 0(720p) , 1(vga)-640*480, 2(qvga) 320*240
 	s32Ret = HI_MPI_VENC_GetChnAttr(i, &stVencChnAttr);
 	if (s32Ret != HI_SUCCESS) {
 		SAMPLE_PRT("HI_MPI_VENC_GetChnAttr chn[%d] failed with %#x!\n", i,
@@ -58,7 +59,7 @@ void V4L2FramedSource::doGetNextFrame() {
 		// return NULL;
 	}
 	enPayLoadType[i] = stVencChnAttr.stVeAttr.enType;
-	VencFd[i] = HI_MPI_VENC_GetFd(i);	   //将编码通道映射为一个文件句柄
+	VencFd[i] = HI_MPI_VENC_GetFd(i);//将编码通道映射为一个文件句柄,获得这个句柄
 	if (VencFd[i] < 0) {
 		SAMPLE_PRT("HI_MPI_VENC_GetFd failed with %#x!\n", VencFd[i]);
 		// return NULL;
@@ -70,12 +71,12 @@ void V4L2FramedSource::doGetNextFrame() {
 	   step 2:  Start to get streams of each channel
 	   应该是在这里循环这step 2 的代码
 	 ******************************************/
-	FD_ZERO(&read_fds);	   //将read_fd初始化为空集NULL
+	FD_ZERO(&read_fds);//将read_fd初始化为空集NULL
 	FD_SET(VencFd[i], &read_fds);//向集合 read_fds添加描述字VencFd[i]，VencFd[i]就是获得的文件句柄
 	//FD_SET结构来表示一组等待检查的套接口
 	TimeoutVal.tv_sec = 2;
 	TimeoutVal.tv_usec = 0;
-	//select返回值 >0 就绪描述字的数目 -1出错 0 超时
+	//select返回值 >0 就绪描述字的数目 -1出错 0 超时 http://blog.chinaunix.net/uid-21411227-id-1826874.html
 	s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
 	if (s32Ret < 0) {
 		SAMPLE_PRT("select failed!\n");
@@ -84,6 +85,7 @@ void V4L2FramedSource::doGetNextFrame() {
 		SAMPLE_PRT("get venc stream time out, exit thread 1\n");
 		//continue;
 	} else {
+		   //测试VencFd[i]是否可读
 		if (FD_ISSET(VencFd[i], &read_fds)) { //判断VencFd[0]是否在给定的描述符集read_fds中
 			memset(&stStream, i, sizeof(stStream));	        //先赋值0
 			/*
@@ -104,7 +106,7 @@ void V4L2FramedSource::doGetNextFrame() {
 			//空间不小于 N × sizeof(VENC_PACK_S)的大小,其中 N 代表当前帧之中的
 			//包的个数,可以在 select 之后通过查询接口获得。
 			stStream.pstPack = (VENC_PACK_S*) malloc(
-					sizeof(VENC_PACK_S) * stStat.u32CurPacks);
+					sizeof(VENC_PACK_S) * stStat.u32CurPacks);//按帧获取
 			if (NULL == stStream.pstPack) {
 				SAMPLE_PRT("malloc stream pack failed!\n");
 				//break;
@@ -121,7 +123,7 @@ void V4L2FramedSource::doGetNextFrame() {
 				SAMPLE_PRT("HI_MPI_VENC_GetStream failed with %#x!\n", s32Ret);
 				//break;
 			}
-			//这部分内容是通过一个fifo实现的。
+			/*//这部分内容是通过一个fifo实现的。
 			pFifoType priv = new FifoType;
 			fFrameSize = 0;
 			for(unsigned int j =0;j< stStream.u32PackCount;j++)
@@ -141,12 +143,11 @@ void V4L2FramedSource::doGetNextFrame() {
 				printf("step03\n");//
 				fFrameSize += stStream.pstPack[j].u32Len[0];
 			}
-			delete priv;
+			delete priv;*/
 			/*****************************************************
 			 step 2.4 : 将获得的一帧码流去发送
 			 *****************************************************/
-			//以下部分通过fifo实现
-			/*HI_U32 j;
+			HI_U32 j;
 			fFrameSize = 0;
 			for (j = 0; j < stStream.u32PackCount; j++) {
 
@@ -166,7 +167,7 @@ void V4L2FramedSource::doGetNextFrame() {
 					fFrameSize = stStream.pstPack[j].u32Len[1];
 				}
 
-			}*/
+			}
 			//以上注释部分是在没有用fifo的时候
 			//现在改用mkfifo
            /* unsigned char sendbuffer[2048*40];
